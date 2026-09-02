@@ -24,14 +24,13 @@
    pnpm install
    ```
 
-3. 配置 API Key（二选一，切勿提交到仓库）：
+3. 双击 `dsh-web.bat`。
 
-   - 设置环境变量 `DEEPSEEK_API_KEY`；
-   - 或在仓库根目录创建 `.env` 文件，写入 `DEEPSEEK_API_KEY=***
+浏览器会在几秒后自动打开 Web UI（默认地址 `http://127.0.0.1:3080`）。
 
-4. 双击 `dsh-web.bat`。
+4. 配置 API Key：打开 **设置 → 模型**，在 DeepSeek 卡片中填入 API Key 并保存。密钥保存在 `%USERPROFILE%\.dsh\.credentials.yaml`，不会进入仓库。
 
-浏览器会在几秒后自动打开 Web UI（默认地址 `http://127.0.0.1:3080`）。会话数据保存在 `%USERPROFILE%\.dsh`。
+会话数据保存在 `%USERPROFILE%\.dsh`。
 
 ## 常见问题
 
