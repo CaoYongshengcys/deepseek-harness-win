@@ -1,57 +1,48 @@
-# DeepSeek Harness
+# DeepSeek Harness Windows 一键启动
 
-English | [中文](README.zh.md)
+本仓库是 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 一键启动版。双击 `dsh-web.bat` 即可启动 Web UI。
 
-DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
+## 环境要求
 
-It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
+- Windows 10/11
+- [Node.js](https://nodejs.org) `^22.19 || >=24`
+- [pnpm](https://pnpm.io)（`npm install -g pnpm`）
+- [Git](https://git-scm.com)
 
-## Developer preview
+## 使用步骤
 
-DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+1. 克隆仓库：
 
-## Run
+   ```sh
+   git clone https://github.com/CaoYongshengcys/deepseek-harness-win.git
+   cd deepseek-harness-win
+   ```
 
-### Run from `npm`
+2. 安装依赖：
 
-Install `Node.js`, then run:
+   ```sh
+   pnpm install
+   ```
 
-```sh
-npx @deepseek-ai/dsh web
-```
+3. 配置 API Key（二选一，切勿提交到仓库）：
 
-The command starts the Web UI, served at `http://127.0.0.1:3080` by default. See [Web UI guide](docs/user/guide/index.md).
+   - 设置环境变量 `DEEPSEEK_API_KEY`；
+   - 或在仓库根目录创建 `.env` 文件，写入 `DEEPSEEK_API_KEY=***
 
-### Run from source
+4. 双击 `dsh-web.bat`。
 
-To run from a repository checkout:
+浏览器会在几秒后自动打开 Web UI（默认地址 `http://127.0.0.1:3080`）。会话数据保存在 `%USERPROFILE%\.dsh`。
 
-```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
-pnpm install
-pnpm run build
-pnpm dsh web
-```
+## 常见问题
 
-## Community and support
+- **端口被占用**：确认 3080 端口未被其他程序占用。
+- **pnpm 不是内部命令**：重新打开终端，或检查 pnpm 是否安装成功。
+- **首次启动较慢**：tsx 直接从源码启动，无需预先 build。
 
-- Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
-- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
+## 上游项目
 
-## Contributing
+上游开发与文档见 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)。
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Development
-
-Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
-
-For agents, follow [AGENTS.md](AGENTS.md).
-
-## License
+## 许可证
 
 [MIT](LICENSE)
-
-Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
