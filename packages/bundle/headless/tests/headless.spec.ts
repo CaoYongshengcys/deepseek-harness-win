@@ -6,8 +6,11 @@ import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentHandle, CreateAgentOptions } from '@deepseek-ai/dsh-agent'
 import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
 import { createAssistantMessage } from '@deepseek-ai/dsh-llm'
+import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import TokenMeter from '@deepseek-ai/dsh-token-meter'
 import { apply, Config, internals } from '../src/index.ts'
 
 const originalInternals = { ...internals }
@@ -24,6 +27,7 @@ function appendTurn(
   message: UserMessage,
   text: string | undefined,
   completed: boolean,
+  usage?: TokenUsage,
 ): void {
   session.append('turn/start', { turn })
   session.append('step/start', { turn, step: 1 })
@@ -36,6 +40,7 @@ function appendTurn(
         content: [{ type: 'text', text }],
         source: { provider: 'test-provider', model: 'test-model' },
       }),
+      ...usage === undefined ? {} : { usage },
     }, { surfaceOp: 'append' })
   }
   session.append('step/end', { turn, step: 1 })
@@ -48,7 +53,7 @@ function appendTurn(
 }
 
 /** Mount the real registries around a small scripted Agent factory. */
-async function bench(script: Script): Promise<{
+async function bench(script: Script, options: { projections?: boolean } = {}): Promise<{
   ctx: Context
   run(): Promise<{ code: number; out: string; err: string; order: string[] }>
 }> {
@@ -56,6 +61,12 @@ async function bench(script: Script): Promise<{
   await ctx.plugin(SessionStore)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(AgentDefaultModelConfig, { provider: 'test-provider', model: 'test-model' })
+  // The registry must precede the meter: token-meter registers its projection
+  // units through an optional child fiber over `sessionProjections`.
+  if (options.projections === true) {
+    await ctx.plugin(SessionProjectionRegistry)
+    await ctx.plugin(TokenMeter)
+  }
   ctx.agents.setFactory({
     async createAgent(ownerCtx: Context, options: CreateAgentOptions): Promise<AgentHandle> {
       const session = ctx.sessions.create(options.sessionId, {
@@ -175,6 +186,29 @@ describe('headless runner', () => {
   it('exits 1 when the owned interval contains no turn', async () => {
     const test = await bench({ afterPrompt: () => {} })
     expect(await test.run()).toMatchObject({ code: 1, out: '\n', err: '' })
+    await test.ctx.fiber.dispose()
+  })
+
+  it('prints the run\'s cumulative provider usage on stderr', async () => {
+    const test = await bench({
+      afterPrompt(session, message) {
+        appendTurn(session, 1, message, 'tool step', true, { inputTokens: 11, outputTokens: 3, cacheReadTokens: 2 })
+        appendTurn(session, 2, message, 'final answer', true, { inputTokens: 7, outputTokens: 5, cacheWriteTokens: 4 })
+      },
+    }, { projections: true })
+    expect(await test.run()).toMatchObject({
+      code: 0,
+      out: 'final answer\n',
+      err: 'dsh: tokens: input 18, output 8, cache read 2, cache write 4, total 32\n',
+    })
+    await test.ctx.fiber.dispose()
+  })
+
+  it('prints no token line when the run accumulated no provider usage', async () => {
+    const test = await bench({
+      afterPrompt(session, message) { appendTurn(session, 1, message, 'unmetered answer', true) },
+    }, { projections: true })
+    expect(await test.run()).toMatchObject({ code: 0, out: 'unmetered answer\n', err: '' })
     await test.ctx.fiber.dispose()
   })
 

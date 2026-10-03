@@ -371,6 +371,9 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     const apiKey = 'built-dsh-headless-key'
     const server = await startMockLlmServer({
       sequence: ['success'],
+      // Session title generation races the turn's own request to the mock; the
+      // repeated success behavior makes either arrival order the same run.
+      repeatLast: true,
       apiKey,
       successText: 'published headless profile reached the mock',
     })
@@ -384,7 +387,10 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       })
       expect(result.code, result.stderr).toBe(0)
       expect(result.stdout).toBe('published headless profile reached the mock')
-      expect(result.stderr).toBe('')
+      // The mock's terminal chunk reports prompt_tokens 3 and one completion
+      // token per success-text code point, which is the whole run summary;
+      // execa strips the final newline from the captured stream.
+      expect(result.stderr).toBe('dsh: tokens: input 3, output 43, cache read 0, cache write 0, total 46')
       expect(server.requests.length).toBeGreaterThan(0)
       expect(server.requests.every(request => request.path === '/chat/completions')).toBe(true)
       expect(JSON.stringify(server.requests.map(request => request.body))).toContain('answer from the published entry')

@@ -249,7 +249,9 @@ describe('headless stream-json snapshots', () => {
     })
 
     expect(result.stdout).toBe('CLI tool round trip complete: CLI_TOOL_ROUND_TRIP\n')
-    expect(result.stderr).toBe('')
+    // The mock adapter reports usage once per step (11/3 with a 2-token cache
+    // read, then 7/5), so the run summary folds to these four disjoint buckets.
+    expect(result.stderr).toBe('dsh: tokens: input 18, output 8, cache read 2, cache write 0, total 28\n')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)
 
   it('prints a terminal model failure through the product headless profile command', async () => {
