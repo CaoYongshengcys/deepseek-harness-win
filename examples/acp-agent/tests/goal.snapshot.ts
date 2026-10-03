@@ -30,6 +30,13 @@ const agent: AgentUnderTest = {
   tsconfigPath: fileURLToPath(new URL('../../../tsconfig.json', import.meta.url)),
 }
 
+// The shipped composition imports node:sqlite, whose ExperimentalWarning carries
+// the child pid and cannot be pinned by the empty-stderr assertions; suppress it
+// in the launch environment.
+const childEnv = {
+  NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
+}
+
 interface JsonObject {
   [key: string]: unknown
 }
@@ -70,6 +77,7 @@ describe('same-session goal snapshot through the ACP automation driver', () => {
     const result = await runScenario(input, {
       agent,
       mode: 'replay',
+      env: childEnv,
       fixtureFile,
       overrideFile,
       configPath: agent.configPath,
@@ -119,6 +127,7 @@ describe('same-session goal snapshot through the ACP automation driver', () => {
     const result = await runScenario(input, {
       agent,
       mode: 'replay',
+      env: childEnv,
       fixtureFile: join(wrapupDir, 'session.jsonl'),
       overrideFile: join(wrapupDir, 'replay.override.json'),
       configPath: agent.configPath,

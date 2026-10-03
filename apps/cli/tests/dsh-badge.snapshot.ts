@@ -1,11 +1,20 @@
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { LOADER_SMOKE_TEST_TIMEOUT_MS, runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
+import { runLoaderSmoke } from '@deepseek-ai/dsh-loader-smoke'
 const binScript = fileURLToPath(new URL('./fixtures/dsh-badge/snapshot.ts', import.meta.url))
 const configPath = fileURLToPath(new URL('./fixtures/dsh-badge/cordis.yml', import.meta.url))
 const defaultConfigPath = fileURLToPath(new URL('./fixtures/dsh-badge/default.cordis.yml', import.meta.url))
 const tsconfigPath = fileURLToPath(new URL('../../../tsconfig.json', import.meta.url))
 const badgeAssetsPath = fileURLToPath(new URL('../../../packages/skill/skill-badge/assets/', import.meta.url))
+
+// The shipped-app source launch leaves no headroom under the loader-smoke 30s
+// default on slow hosts, and the composition imports node:sqlite, whose
+// ExperimentalWarning carries the child pid and cannot be pinned by the
+// empty-stderr assertions; suppress it in the launch environment.
+const PROCESS_TIMEOUT_MS = 90_000
+const launchEnv = {
+  NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
+}
 
 describe('dsh badge assembled snapshot', () => {
   it('advertises and loads the opt-in bundled skill through the shipped app', async () => {
@@ -16,6 +25,8 @@ describe('dsh badge assembled snapshot', () => {
       libBinScript: binScript,
       configPath: defaultConfigPath,
       tsconfigPath,
+      processTimeoutMs: PROCESS_TIMEOUT_MS,
+      env: launchEnv,
     })
     const enabled = await runLoaderSmoke({
       label: 'dsh badge skill snapshot',
@@ -24,10 +35,15 @@ describe('dsh badge assembled snapshot', () => {
       libBinScript: binScript,
       configPath,
       tsconfigPath,
+      processTimeoutMs: PROCESS_TIMEOUT_MS,
+      env: launchEnv,
     })
     const disabledSnapshot = JSON.parse(disabled.stdout) as unknown
+    // The raw stdout is JSON text, where a Windows path carries doubled
+    // backslashes; tokenize the JSON-escaped form of the assets path so the
+    // replacement matches on every platform.
     const enabledSnapshot = JSON.parse(
-      enabled.stdout.replaceAll(badgeAssetsPath, '{{badgeAssetsPath}}'),
+      enabled.stdout.replaceAll(JSON.stringify(badgeAssetsPath).slice(1, -1), '{{badgeAssetsPath}}'),
     ) as unknown
 
     expect(disabled.stderr).toBe('')
@@ -172,5 +188,5 @@ describe('dsh badge assembled snapshot', () => {
         },
       }
     `)
-  }, LOADER_SMOKE_TEST_TIMEOUT_MS * 2)
+  }, (PROCESS_TIMEOUT_MS + 15_000) * 2)
 })

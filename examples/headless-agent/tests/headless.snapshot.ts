@@ -59,6 +59,9 @@ const headlessSessionExpected = join(snapshotsDir, 'headless-profile', 'session.
 const headlessFailureExpected = join(snapshotsDir, 'headless-profile', 'stderr.expected.txt')
 const cliMockLlmPluginPath = fileURLToPath(new URL('./fixtures/cli-mock-llm.ts', import.meta.url))
 const refreshing = process.env.DSH_SNAPSHOT === 'refresh'
+// The full-product source launch leaves no headroom under the 30s loader-smoke
+// default on slow hosts; the model-failure scenario below dials no provider.
+const PRODUCT_PROFILE_PROCESS_TIMEOUT_MS = 90_000
 
 interface JsonObject {
   [key: string]: unknown
@@ -219,7 +222,11 @@ async function prepareCliMockFixture(cwd: string): Promise<void> {
 }
 
 describe('headless stream-json snapshots', () => {
-  it('runs one task through the product headless profile command', async () => {
+  // The fixture drives one `bash` tool call, and dsh-base gates the bash stack
+  // off win32 in favor of tool-pwsh, so this scenario replays only where the
+  // bash stack mounts; check:windows-wine and the CI platform matrix own the
+  // Windows signal.
+  it.skipIf(process.platform === 'win32')('runs one task through the product headless profile command', async () => {
     const task = 'Prove the product headless profile path with one real tool round trip.'
     const result = await runLoaderSmoke({
       label: 'product headless profile snapshot',
@@ -263,6 +270,7 @@ describe('headless stream-json snapshots', () => {
       binArgs: ['--profile', 'headless', '--patch', headlessOverlayPath, 'Trigger the keyless model failure.'],
       tsconfigPath,
       expectedExitCode: 1,
+      processTimeoutMs: PRODUCT_PROFILE_PROCESS_TIMEOUT_MS,
       env: {
         DSH_CLI_MOCK_FAILURE: '1',
         DSH_TELEMETRY_DISABLED: '1',
@@ -273,7 +281,7 @@ describe('headless stream-json snapshots', () => {
 
     expect(result.stdout).toBe('\n')
     await expect(result.stderr).toMatchFileSnapshot(headlessFailureExpected)
-  }, LOADER_SMOKE_TEST_TIMEOUT_MS)
+  }, PRODUCT_PROFILE_PROCESS_TIMEOUT_MS + 15_000)
 
   it('prints the original Loader activation error through the assembled one-shot app', async () => {
     const result = await runLoaderSmoke({
