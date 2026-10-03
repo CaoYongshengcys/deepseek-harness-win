@@ -1,47 +1,61 @@
-# DeepSeek Harness Windows 一键启动
+# DeepSeek Harness Windows one-click launcher
 
-本仓库是 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 一键启动版。双击 `dsh-web.bat` 即可启动 Web UI。
+English | [中文](README.zh.md)
 
-## 环境要求
+This repository is the Windows one-click launcher edition of [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness). Double-click `dsh-web.bat` to start the Web UI.
+
+## Requirements
 
 - Windows 10/11
 - [Node.js](https://nodejs.org) `^22.19 || >=24`
-- [pnpm](https://pnpm.io)（`npm install -g pnpm`）
+- [pnpm](https://pnpm.io) (`npm install -g pnpm`)
 - [Git](https://git-scm.com)
 
-## 使用步骤
+## Run
 
-1. 克隆仓库：
+1. Clone the repository:
 
    ```sh
    git clone https://github.com/CaoYongshengcys/deepseek-harness-win.git
    cd deepseek-harness-win
    ```
 
-2. 安装依赖：
+2. Install dependencies:
 
    ```sh
    pnpm install
    ```
 
-3. 双击 `dsh-web.bat`，按提示输入端口（直接回车使用默认 `3080`）。
+3. Double-click `dsh-web.bat` and enter a port at the prompt (press Enter for the default `3080`).
 
-服务就绪后浏览器会自动打开 Web UI（`http://127.0.0.1:<端口>`）。启动前会先检查该端口：若已被占用，会打印占用进程的 PID、名称与命令行，此时输入 `r` 换一个端口，或直接回车退出。
+Once the server is ready, the browser opens the Web UI (`http://127.0.0.1:<port>`) automatically, and the command prints its URL. Before starting, the launcher probes the port: if it is occupied, the launcher prints the occupying process's PID, name, and command line — enter `r` to pick another port, or press Enter to exit.
 
-4. 配置 API Key：打开 **设置 → 模型**，在 DeepSeek 卡片中填入 API Key 并保存。密钥保存在 `%USERPROFILE%\.dsh\.credentials.yaml`，不会进入仓库。
+4. Configure the API key: open **Settings → Models**, fill in the API key on the DeepSeek card, and save. The key is stored in `%USERPROFILE%\.dsh\.credentials.yaml` and never enters the repository.
 
-会话数据保存在 `%USERPROFILE%\.dsh`。
+Session data is stored in `%USERPROFILE%\.dsh`.
 
-## 常见问题
+## Run from source
 
-- **端口被占用**：`dsh-web.bat` 启动时会检查端口并列出占用进程（PID、名称、命令行）；输入 `r` 换一个端口，或先结束那个进程。
-- **pnpm 不是内部命令**：重新打开终端，或检查 pnpm 是否安装成功。
-- **首次启动较慢**：tsx 直接从源码启动，无需预先 build。
+A source checkout runs the `dsh` CLI through tsx with no prior build:
 
-## 上游项目
+```sh
+pnpm install
+pnpm dsh web                          # the Web UI
+pnpm dsh --profile headless "task"    # one-shot task
+```
 
-上游开发与文档见 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)。
+Run every `dsh ...` command in the documentation from the repository root as `pnpm dsh ...`.
 
-## 许可证
+## Troubleshooting
+
+- **Port occupied**: `dsh-web.bat` probes the port at launch and lists the occupying process (PID, name, command line); enter `r` to pick another port, or stop that process first.
+- **pnpm is not recognized**: reopen the terminal, or check that pnpm installed successfully.
+- **Slow first launch**: tsx runs directly from source; no build step is required.
+
+## Upstream
+
+Upstream development and documentation: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness).
+
+## License
 
 [MIT](LICENSE)
