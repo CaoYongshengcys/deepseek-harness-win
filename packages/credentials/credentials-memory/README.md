@@ -23,7 +23,7 @@ No fields. The provider reads nothing external; an empty config carries nothing 
 
 ## Model Experience
 
-None; this package carries no model behavior.
+Indirectly, through the consuming LLM adapters: stored values authorize their provider requests, and the adapter owns every model-visible surface.
 
 #### KV Cache effect
 

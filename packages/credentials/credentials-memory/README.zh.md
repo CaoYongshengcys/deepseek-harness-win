@@ -23,7 +23,7 @@ CLI/CI 运行若从环境或 `$DSH_HOME/.credentials.yaml` 读取 key，仍默�
 
 ## Model Experience
 
-无；本包不涉及任何模型行为。
+经由消费它的 LLM（大语言模型）适配器间接生效：存储的值为适配器向提供方发出的请求授权，所有模型可见内容均由适配器负责。
 
 #### KV Cache effect
 
