@@ -30,16 +30,13 @@
       "path": "../../core/session"
     },
     {
-      "path": "../../session/session-projection"
-    },
-    {
-      "path": "../../llm/token-meter"
-    },
-    {
-      "path": "../../runtime-diagnostics/invariants"
-    },
-    {
       "path": "../../boot/cmdline"
+    },
+    {
+      "path": "../../session-query/session-query"
+    },
+    {
+      "path": "../../fs/fs"
     }
   ]
 }

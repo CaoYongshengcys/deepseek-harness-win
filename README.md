@@ -1,61 +1,77 @@
-# DeepSeek Harness Windows one-click launcher
+# DeepSeek Harness
 
 English | [中文](README.zh.md)
 
-This repository is the Windows one-click launcher edition of [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness). Double-click `dsh-web.bat` to start the Web UI.
+DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
 
-## Requirements
+It is built on an **everything-is-a-plugin** architecture and powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://arxiv.org/abs/2608.25512).
 
-- Windows 10/11
-- [Node.js](https://nodejs.org) `^22.19 || >=24`
-- [pnpm](https://pnpm.io) (`npm install -g pnpm`)
-- [Git](https://git-scm.com)
+Documentation: [https://deepseek-harness.github.io/deepseek-harness/](https://deepseek-harness.github.io/deepseek-harness/)
+
+## Developer preview
+
+DeepSeek Harness is in _developer preview_ and iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+
+Review the [safety notice](SAFETY.md) before running the project.
 
 ## Run
 
-1. Clone the repository:
+### Run from `npm`
 
-   ```sh
-   git clone https://github.com/CaoYongshengcys/deepseek-harness-win.git
-   cd deepseek-harness-win
-   ```
-
-2. Install dependencies:
-
-   ```sh
-   pnpm install
-   ```
-
-3. Double-click `dsh-web.bat` and enter a port at the prompt (press Enter for the default `3080`).
-
-Once the server is ready, the browser opens the Web UI (`http://127.0.0.1:<port>`) automatically, and the command prints its URL. Before starting, the launcher probes the port: if it is occupied, the launcher prints the occupying process's PID, name, and command line — enter `r` to pick another port, or press Enter to exit.
-
-4. Configure the API key: open **Settings → Models**, fill in the API key on the DeepSeek card, and save. The key is stored in `%USERPROFILE%\.dsh\.credentials.yaml` and never enters the repository.
-
-Session data is stored in `%USERPROFILE%\.dsh`.
-
-## Run from source
-
-A source checkout runs the `dsh` CLI through tsx with no prior build:
+Install `Node.js`, then run:
 
 ```sh
-pnpm install
-pnpm dsh web                          # the Web UI
-pnpm dsh --profile headless "task"    # one-shot task
+npx @deepseek-ai/dsh web
 ```
 
-Run every `dsh ...` command in the documentation from the repository root as `pnpm dsh ...`.
+The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
 
-## Troubleshooting
+### Run from source
 
-- **Port occupied**: `dsh-web.bat` probes the port at launch and lists the occupying process (PID, name, command line); enter `r` to pick another port, or stop that process first.
-- **pnpm is not recognized**: reopen the terminal, or check that pnpm installed successfully.
-- **Slow first launch**: tsx runs directly from source; no build step is required.
+To run from a repository checkout:
 
-## Upstream
+```sh
+git clone https://github.com/deepseek-ai/deepseek-harness.git
+cd deepseek-harness
+pnpm install
+pnpm run build
+pnpm dsh web
+```
 
-Upstream development and documentation: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness).
+`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
+
+## Community and support
+
+- Submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
+- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
+- Join <a href="https://discord.gg/4MrtZUhpxg">DeepSeek Harness Discord community</a>.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Development
+
+Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
+
+`pnpm run dev:web` builds, serves, and rebuilds client bundles on source edits in one terminal, and `make help` lists the matching Make targets for Web and Desktop; the guide's application commands section owns the full table.
+
+For agents, follow [AGENTS.md](AGENTS.md).
+
+## Citation
+
+```bibtex
+@misc{deepseek-harness2026,
+  title={DeepSeek Harness: Everything is a Plugin},
+  author={DeepSeek-AI},
+  year={2026},
+  publisher={GitHub},
+  howpublished={\url{https://github.com/deepseek-ai/deepseek-harness}},
+}
+```
 
 ## License
 
 [MIT](LICENSE)
+
+Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
