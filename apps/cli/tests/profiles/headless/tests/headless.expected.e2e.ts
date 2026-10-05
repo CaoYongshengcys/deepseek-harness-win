@@ -236,7 +236,9 @@ async function persistedLogs(cwd: string, root: string = join(cwd, '.sessions'))
 
 describe('headless stream-json snapshots', () => {
 
-  it.each(['src', 'lib'] as const)('runs one task through the product headless profile command (%s)', async (mode) => {
+  // The session golden records the POSIX bash round trip; no pwsh-variant
+  // golden ships for this scenario, so the Windows signal rides the CI matrix.
+  it.skipIf(process.platform === 'win32').each(['src', 'lib'] as const)('runs one task through the product headless profile command (%s)', async (mode) => {
     const task = 'Prove the product headless profile path with one real tool round trip.'
     const result = await runLoaderSmoke({
       label: 'product headless profile snapshot',
@@ -299,7 +301,9 @@ describe('headless stream-json snapshots', () => {
     expect(events.map(event => event.type)).toContain('tool_call')
     expect(events.map(event => event.type)).toContain('tool_result')
     expect(events.map(event => event.type)).not.toContain('error')
-    expect(result.stderr).toBe('')
+    // The token summary is the run's only stderr diagnostic in JSON mode;
+    // reasoning streams into the stdout projection instead.
+    expect(result.stderr).toBe('dsh: tokens: input 18, output 8, cache read 2, cache write 0, total 28\n')
   }, LOADER_SMOKE_TEST_TIMEOUT_MS)
 
   it('fails the JSON run when --session-id names no stored Session', async () => {

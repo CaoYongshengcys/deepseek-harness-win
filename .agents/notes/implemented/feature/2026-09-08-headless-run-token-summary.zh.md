@@ -28,4 +28,4 @@ Status: implemented
 
 ## 后果
 
-凡是提供方上报过用量的 headless 运行现在都会写出一行 stderr，因此原本把真实运行的 stderr 钉为空的那些测试改为断言该汇总：`examples/headless-agent` 里的 `headless-profile` 无密钥快照，以及 `apps/cli` built-bin e2e 的 headless 用例。组合包为此新增了对 `dsh-session-projection` 与 `dsh-token-meter` 的纯类型 peer 依赖，用于注册表的 Context 合并与投影键声明。由于无账可记的运行保持静默，该行出现并不能证明运行成功，其缺失也不能证明装配里没有 token-meter。
+凡是提供方上报过用量的 headless 运行现在都会写出一行 stderr，钉住真实运行 stderr 的测试也随之携带它：`apps/cli/tests/profiles/headless` 的 `headless-profile` 期望输出 golden 在流式 reasoning 段之后追加该汇总，JSON 投影场景把它断言为该次运行唯一的 stderr 诊断，`apps/cli` built-bin e2e 的 headless 用例在 mock 的 reasoning 文本之后断言它。组合包为此新增了对 `dsh-session-projection` 与 `dsh-token-meter` 的纯类型 peer 依赖，用于注册表的 Context 合并与投影键声明。由于无账可记的运行保持静默，该行出现并不能证明运行成功，其缺失也不能证明装配里没有 token-meter。

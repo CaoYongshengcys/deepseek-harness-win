@@ -1,2 +1,3 @@
 dsh: reasoning:
 Inspecting the task before the tool call.
+dsh: tokens: input 18, output 8, cache read 2, cache write 0, total 28

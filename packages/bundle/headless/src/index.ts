@@ -4,8 +4,9 @@
  * creates one Agent through the core registry (or adopts the exact Session a
  * `--session-id` names), drives the task to quiescence, streams provider
  * reasoning to stderr, flushes its Session, prints the final assistant text to
- * stdout, and exits. With `--json` it projects the run as newline-delimited
- * events instead of the final text.
+ * stdout, reports the run's provider token usage on stderr, and exits. With
+ * `--json` it projects the run as newline-delimited events instead of the
+ * final text.
  *
  * @module @deepseek-ai/dsh-headless
  */
@@ -24,11 +25,15 @@ import { SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { SessionQueryError } from '@deepseek-ai/dsh-session-query'
 // Empty type imports carry the loader Context merge for the settlement await,
-// the cmdline Context merge for the appExit host value, and the sessionQuery
-// Context merge for exact Session adoption.
+// the cmdline Context merge for the appExit host value, the sessionQuery
+// Context merge for exact Session adoption, the session-projection Context
+// merge for the optional usage read, and token-meter's declaration of the
+// `tokenUsage` projection key that read returns.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
 import type {} from '@deepseek-ai/dsh-session-query'
+import type {} from '@deepseek-ai/dsh-session-projection'
+import type {} from '@deepseek-ai/dsh-token-meter'
 import { internals } from './runner-internals.ts'
 import { projectJsonRun, boundJsonLine } from './json-stream.ts'
 
@@ -292,6 +297,31 @@ async function resolveAgent(
   }
 }
 
+/**
+ * Render the run's cumulative provider usage as one stderr line.
+ *
+ * The four buckets are disjoint and come from token-meter's whole-log
+ * `tokenUsage` projection, so `total` is their plain sum and reasoning tokens
+ * are already inside `outputTokens`. A run that accumulated nothing — a
+ * composition without the projection seam, or a turn that failed before any
+ * provider reported usage — has no figure worth printing and yields no line.
+ *
+ * @param ctx - plugin context carrying the optional `sessionProjections` registry.
+ * @param session - the run's own Session.
+ * @returns the newline-terminated summary, or `undefined` when there is nothing to report.
+ */
+function tokenSummary(ctx: Context, session: Session): string | undefined {
+  const usage = ctx.get('sessionProjections')?.snapshot(session).values.tokenUsage
+  if (usage === undefined) return undefined
+  const total = usage.uncachedInputTokens
+    + usage.outputTokens
+    + usage.cacheReadTokens
+    + usage.cacheWriteTokens
+  if (total === 0) return undefined
+  return `dsh: tokens: input ${usage.uncachedInputTokens}, output ${usage.outputTokens},`
+    + ` cache read ${usage.cacheReadTokens}, cache write ${usage.cacheWriteTokens}, total ${total}\n`
+}
+
 /** Report an unexpected direct-driver failure and request a failing exit. */
 function fail(io: HeadlessIo, error: unknown, json: boolean): void {
   const message = error instanceof Error ? error.message : String(error)
@@ -377,6 +407,8 @@ async function run(ctx: Context, config: Config, io: HeadlessIo): Promise<void> 
     if (outcome.reason?.kind === 'error') {
       io.stderr.write(`dsh: ${outcome.reason.error.code}: ${outcome.reason.error.message}\n`)
     }
+    const tokens = tokenSummary(ctx, agent.session)
+    if (tokens !== undefined) io.stderr.write(tokens)
     io.exit(outcome.reason?.kind === 'completed' ? 0 : 1)
   } finally {
     projection?.dispose()

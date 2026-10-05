@@ -601,6 +601,9 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
     const apiKey = 'built-dsh-headless-key'
     const server = await startMockLlmServer({
       sequence: ['reasoning_success'],
+      // Session title generation races the turn's own request to the mock; the
+      // repeated behavior makes either arrival order the same run.
+      repeatLast: true,
       apiKey,
       reasoningText: 'Inspecting the published entry.',
       successText: 'published headless profile reached the mock',
@@ -615,7 +618,7 @@ describe.skipIf(!existsSync(dshBin))('dsh BUILT bin (node lib/bin.js, no tsx)', 
       })
       expect(result.code, result.stderr).toBe(0)
       expect(result.stdout).toBe('published headless profile reached the mock')
-      expect(result.stderr).toBe('dsh: reasoning:\nInspecting the published entry.')
+      expect(result.stderr).toBe('dsh: reasoning:\nInspecting the published entry.\ndsh: tokens: input 3, output 43, cache read 0, cache write 0, total 46')
       expect(server.requests.length).toBeGreaterThan(0)
       expect(server.requests.every(request => request.path === '/v1/messages')).toBe(true)
       expect(JSON.stringify(server.requests.map(request => request.body))).toContain('answer from the published entry')

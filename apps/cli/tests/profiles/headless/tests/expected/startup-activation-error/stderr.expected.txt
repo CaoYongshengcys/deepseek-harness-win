@@ -3,3 +3,4 @@ activation-error (./activation-error.mjs): Error: startup activation snapshot fa
     at activation-error-fixture
 dsh: reasoning:
 Inspecting the task before the tool call.
+dsh: tokens: input 18, output 8, cache read 2, cache write 0, total 28

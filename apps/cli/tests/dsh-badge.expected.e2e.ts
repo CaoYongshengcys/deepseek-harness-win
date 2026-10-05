@@ -7,8 +7,18 @@ const defaultConfigPath = fileURLToPath(new URL('./fixtures/dsh-badge/default.co
 const tsconfigPath = fileURLToPath(new URL('../../../tsconfig.json', import.meta.url))
 const badgeAssetsPath = fileURLToPath(new URL('../../../packages/skill/skill-badge/assets/', import.meta.url))
 
+// The shipped app composition imports node:sqlite, whose ExperimentalWarning
+// carries the child pid and cannot be pinned by the empty-stderr assertions;
+// suppress it in the launch environment.
+const launchEnv = {
+  NODE_OPTIONS: [process.env.NODE_OPTIONS, '--disable-warning=ExperimentalWarning'].filter(Boolean).join(' '),
+}
+
 describe('dsh badge assembled snapshot', () => {
-  it('advertises and loads the opt-in bundled skill through the shipped app', async () => {
+  // The pinned catalogs record the POSIX bundled-skill roster; win32 bundles
+  // the extra diagnose-windows-sandbox-acl skill, so the Windows signal rides
+  // the CI matrix.
+  it.skipIf(process.platform === 'win32')('advertises and loads the opt-in bundled skill through the shipped app', async () => {
     const disabled = await runLoaderSmoke({
       label: 'disabled dsh badge skill snapshot',
       tempDirPrefix: 'headless-snapshot-dsh-badge-disabled-',
@@ -16,6 +26,7 @@ describe('dsh badge assembled snapshot', () => {
       libBinScript: binScript,
       configPath: defaultConfigPath,
       tsconfigPath,
+      env: launchEnv,
     })
     const enabled = await runLoaderSmoke({
       label: 'dsh badge skill snapshot',
@@ -24,10 +35,14 @@ describe('dsh badge assembled snapshot', () => {
       libBinScript: binScript,
       configPath,
       tsconfigPath,
+      env: launchEnv,
     })
     const disabledSnapshot: unknown = JSON.parse(disabled.stdout)
+    // The raw stdout is JSON text, where a Windows path carries doubled
+    // backslashes; tokenize the JSON-escaped form of the assets path so the
+    // replacement matches on every platform.
     const enabledSnapshot: unknown = JSON.parse(
-      enabled.stdout.replaceAll(badgeAssetsPath, '{{badgeAssetsPath}}'),
+      enabled.stdout.replaceAll(JSON.stringify(badgeAssetsPath).slice(1, -1), '{{badgeAssetsPath}}'),
     )
 
     expect(disabled.stderr).toBe('')

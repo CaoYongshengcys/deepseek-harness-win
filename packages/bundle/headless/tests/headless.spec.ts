@@ -13,9 +13,10 @@ import type {
   ResumeAgentOptions,
 } from '@deepseek-ai/dsh-agent'
 import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
-import { LlmAttemptId, ToolCallId, createAssistantMessage, createToolResultMessage, type MessageId, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import { LlmAttemptId, ToolCallId, createAssistantMessage, createToolResultMessage, type MessageId, type StreamChunk, type TokenUsage } from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import TokenMeter from '@deepseek-ai/dsh-token-meter'
 import type { Session, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
 import { SessionQueryError } from '@deepseek-ai/dsh-session-query'
 import { createInboxStub } from '@deepseek-ai/dsh-agent-loop-testkit'
@@ -57,6 +58,8 @@ interface BenchOptions {
   preliveMeta?: { cwd?: string; origin?: 'subagent'; agentPreset?: string }
   /** Run when the runner awaits idle, e.g. to append to the attached log. */
   onWhenIdle?: (agent: Agent) => void
+  /** Mount token-meter so the run folds provider usage into the projection. */
+  tokenMeter?: boolean
 }
 
 const frameStates = new WeakMap<Agent, { attemptId: ReturnType<typeof LlmAttemptId>; revision: number; index: number }>()
@@ -88,6 +91,7 @@ function appendTurn(
   message: UserMessage,
   text: string | undefined,
   completed: boolean,
+  usage?: TokenUsage,
 ): void {
   session.append('turn/start', { turn })
   session.append('step/start', { turn, step: 1 })
@@ -101,6 +105,7 @@ function appendTurn(
         content: [{ type: 'text', text }],
         source: { provider: 'test-provider', model: 'test-model' },
       }),
+      ...usage === undefined ? {} : { usage },
     }, { surfaceOp: 'append' })
   }
   session.append('step/end', { turn, step: 1 })
@@ -171,6 +176,9 @@ async function bench(script: Script, options: BenchOptions = {}): Promise<{
 
   await ctx.plugin(SessionStore)
   await ctx.plugin(SessionProjectionRegistry)
+  // The registry must precede the meter: token-meter registers its projection
+  // units through an optional child fiber over `sessionProjections`.
+  if (options.tokenMeter === true) await ctx.plugin(TokenMeter)
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(AgentDefaultModelConfig, { provider: 'test-provider', model: 'test-model' })
   ctx.agents.setFactory({
@@ -232,6 +240,35 @@ describe('headless runner', () => {
     }, { filesystemCwd: cwd })
     try { expect(await test.run()).toMatchObject({ code: 0, out: 'remote answer\n' }) }
     finally { await test.ctx.fiber.dispose() }
+  })
+
+  it('prints the run\'s cumulative provider usage on stderr', async () => {
+    const test = await bench({
+      afterPrompt(session, message) {
+        appendTurn(session, 1, message, 'tool step', true, { inputTokens: 11, outputTokens: 3, cacheReadTokens: 2 })
+        appendTurn(session, 2, message, 'final answer', true, { inputTokens: 7, outputTokens: 5, cacheWriteTokens: 4 })
+      },
+    }, { tokenMeter: true })
+    try {
+      expect(await test.run()).toMatchObject({
+        code: 0,
+        out: 'final answer\n',
+        err: 'dsh: tokens: input 18, output 8, cache read 2, cache write 4, total 32\n',
+      })
+    } finally {
+      await test.ctx.fiber.dispose()
+    }
+  })
+
+  it('prints no token line when the run accumulated no provider usage', async () => {
+    const test = await bench({
+      afterPrompt(session, message) { appendTurn(session, 1, message, 'unmetered answer', true) },
+    }, { tokenMeter: true })
+    try {
+      expect(await test.run()).toMatchObject({ code: 0, out: 'unmetered answer\n', err: '' })
+    } finally {
+      await test.ctx.fiber.dispose()
+    }
   })
 
   it('reports the provider cwd in its opening JSON event', async () => {

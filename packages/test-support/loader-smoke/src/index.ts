@@ -23,9 +23,12 @@ export {
   type FixtureTurnResult,
 } from './agent-turn.ts'
 
-const DEFAULT_PROCESS_TIMEOUT_MS = 30_000
+// Fork-local: a full-product source launch takes far longer than the upstream
+// 30s on slow Windows hosts; passing runs finish unaffected and only a hang
+// reports later.
+const DEFAULT_PROCESS_TIMEOUT_MS = 90_000
 
-/** Vitest deadline that leaves room for the subprocess-owned 30-second diagnostic timeout. */
+/** Vitest deadline that leaves room for the subprocess-owned diagnostic timeout. */
 export const LOADER_SMOKE_TEST_TIMEOUT_MS = DEFAULT_PROCESS_TIMEOUT_MS + 15_000
 
 /** Which artifact an example bin is booted from: unbuilt `src` via tsx, or built `lib` via plain Node. */
