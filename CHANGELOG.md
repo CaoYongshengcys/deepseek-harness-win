@@ -2,6 +2,14 @@
 
 本仓库是 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 的 Windows 一键启动版，此文件记录本仓库自身的更新；上游变更以导入时的版本为准。
 
+## 2026-10-04
+
+- 同步上游至 [dsh-v0.2.1-alpha.1](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-alpha.1)（上游 2026-10-03 发布，跨越 0.1.5 → 0.1.6 → 0.1.7 → 0.2.0 → 0.2.1 五条版本线）。同步方式为整树快照导入 + 重放全部 fork 改动；上游的符号链接条目按本机 git 语义物化为内容为目标路径的普通文件。
+- 上游新基线要点：headless 新增 `--json` 事件流与 `--session-id` 会话续用，默认模式把提供方 reasoning 流式写入 stderr（`dsh: reasoning:` 段）；新增 desktop 应用（apps/desktop）；移除 runtime invariant 插件体系；i18n 配对记录改为按章节哈希；期望输出测试重组到 `apps/cli/tests/profiles/`，golden 移至仓库根 `snapshots/`；vendor Cordis 升至 4.0.5-alpha.1。
+- 重放 fork 改动：Windows 一键启动器（`dsh-web.bat` / `dsh-web.ps1`）、双语启动器 README（保留 `## Run` / `## Run from source` 锚点）、headless token 用量汇总（适配新 runner：与 reasoning 流共存、覆盖 `--json` 模式，goldens 与 built-bin 断言同步更新；单元测试 50/50，built-bin 与 product-profile 的 json 投影 / activation-error / 模型失败场景在本机通过）、CHANGELOG。
+- Windows 测试适配（按新测试树重放）：loader-smoke 默认进程超时 30s→90s（fork 本地单点常量，本机全产品源码启动实测 25-80s）；dsh-badge 资源路径标记化改用 JSON 转义形式；badge/goal 子进程抑制 node:sqlite 实验特性警告；built-bin headless mock 保持 repeatLast 以消除会话标题生成竞态；`runs one task` product-profile 用例在 win32 跳过（其会话 golden 只有 POSIX bash 版本，无 pwsh 变体），dsh-badge 用例在 win32 跳过（Windows 额外捆绑 diagnose-windows-sandbox-acl 技能，内联快照钉的是 POSIX 名册）。上游新版 cli-mock 在 win32 自动改用 pwsh 工具，goal 场景在本机直接通过。
+- 验证口径：typecheck 全量构建、受影响用例（headless 单元/built-bin/product-profile 组/goal/badge）、doc-sync 全部门禁。新基线的全量期望/快照套件未在本机整体跑完，旧基线的 jsonrpc SDK 与 ACP 场景 Windows 回放缺口在新基线的状态未逐一验证。
+
 ## 2026-10-03
 
 - headless 运行（`pnpm dsh --profile headless "task"`）结束后在 stderr 打印一行本次运行的 token 用量摘要（input / output / cache read / cache write / total）；本次运行没有累计用量时不打印。
