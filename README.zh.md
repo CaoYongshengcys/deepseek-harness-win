@@ -11,6 +11,8 @@
 - [pnpm](https://pnpm.io)（`npm install -g pnpm`）
 - [Git](https://git-scm.com)
 
+<a id="run"></a>
+
 ## 运行
 
 1. 克隆仓库：
@@ -33,6 +35,8 @@
 4. 配置 API Key：打开 **设置 → 模型**，在 DeepSeek 卡片中填入 API Key 并保存。密钥保存在 `%USERPROFILE%\.dsh\.credentials.yaml`，不会进入仓库。
 
 会话数据保存在 `%USERPROFILE%\.dsh`。
+
+<a id="run-from-source"></a>
 
 ## 从源码运行
 
