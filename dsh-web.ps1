@@ -44,14 +44,12 @@ while ($true) {
   if ($retry -notmatch '^[rR]$') { exit 1 }
 }
 
-$url = "http://127.0.0.1:$port"
-Write-Host "正在启动 Web UI: $url"
+Write-Host "正在启动 Web UI: http://127.0.0.1:$port"
+Write-Host '就绪后 dsh web 会自行打开浏览器；带访问令牌的地址由它打印在下面。'
 
-# Open the browser once the port accepts connections, so a slow source launch
-# does not land on a connection-refused tab.
-$watcher = "for(`$i=0;`$i -lt 240;`$i++){ `$c=New-Object Net.Sockets.TcpClient; try{ `$c.Connect('127.0.0.1',$port); `$c.Close(); Start-Process '$url'; break } catch { Start-Sleep -Milliseconds 500 } finally { `$c.Dispose() } }"
-$null = Start-Process powershell -ArgumentList '-NoProfile', '-WindowStyle', 'Hidden', '-Command', $watcher -WindowStyle Hidden
-
+# The browser handoff belongs to dsh web alone: it opens the token-bearing URL
+# after its plugin tree settles, while a launcher-side port probe would open a
+# tokenless URL that the Web UI rejects with 401.
 & pnpm dsh web --port $port
 $code = $LASTEXITCODE
 if ($code -ne 0) {
