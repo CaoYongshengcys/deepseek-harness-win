@@ -57,6 +57,23 @@ pnpm dsh --profile headless "task"    # one-shot task
 - **pnpm 不是内部命令**：重新打开终端，或检查 pnpm 是否安装成功。
 - **首次启动较慢**：tsx 直接从源码启动，无需预先 build。
 
+## 版本记录
+
+### v0.3.0-win (2026-10-07)
+
+- 恢复工作区文件树的行级右键菜单（fork 补丁）。上游把文件树从 `ui-files` 迁到 `ui-sidebar-files` 时删掉了这份菜单，只剩标题行的"在应用中打开工作区"按钮。现已按行恢复：目录行为"在文件管理器中打开"，文件行为"打开所在文件夹"，两者都经 `remote.session.openWorkspacePath`（文件带 `action: 'reveal'`，Windows 上落到 `explorer /select,<路径>`）。不支持的行类型不显示菜单。
+- 同步 `ui-sidebar-files` 包文档（中英文）与 i18n 配对记录；声明新增的 `@deepseek-ai/dsh-api-session-controller` 注入项与依赖。验证口径：89 个用例全过、client typecheck、oxlint、五道门禁（client i18n / 包结构 / 依赖 / 导出 JSDoc / unknown 断言），以及该包 `src` 逐文件 100% 覆盖率。
+- 已打 tag `v0.3.0-win`；完整历史见 [CHANGELOG.md](CHANGELOG.md)。
+
+### v0.2.1-win (2026-10-06)
+
+- 修复启动器打开裸地址导致 `dsh web authentication required` 的问题。删除启动器侧端口轮询，浏览器打开完全交由 `dsh web` 用带令牌的地址完成。
+- README（中英文）改为引导用户使用 `dsh web` 打印的 `?token=…` 地址；常见问题新增该 401 场景的处理条目。
+
+### 更早版本
+
+完整历史见 [CHANGELOG.md](CHANGELOG.md)，包括上游同步至 `dsh-v0.2.1-alpha.1`（2026-10-04）、headless token 用量汇总与启动器端口选择（2026-10-03）、首次导入（2026-09-02）。
+
 ## 上游项目
 
 上游开发与文档见 [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)。

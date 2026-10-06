@@ -53,6 +53,23 @@ Run every `dsh ...` command in the documentation from the repository root as `pn
 - **pnpm is not recognized**: reopen the terminal, or check that pnpm installed successfully.
 - **Slow first launch**: tsx runs directly from source; no build step is required.
 
+## Release notes
+
+### v0.3.0-win (2026-10-07)
+
+- Restored the per-row context menu in the workspace file tree (fork patch). When upstream migrated the tree from `ui-files` to `ui-sidebar-files`, the row-level menu was dropped, leaving only the header "Open workspace in app" button. The menu is back: directories open in File Explorer, files reveal their containing folder, both via `remote.session.openWorkspacePath` (files pass `action: 'reveal'`, which resolves to `explorer /select,<path>` on Windows). Unsupported row types do not show a menu.
+- Synced `ui-sidebar-files` package docs (EN/ZH) and i18n pairing records; declared the new `@deepseek-ai/dsh-api-session-controller` injection and dependency. Verification: all 89 tests pass, client typecheck, oxlint, plus the five gates (client i18n / package structure / dependencies / export JSDoc / unknown assertions) and per-file 100% coverage on the package's `src`.
+- Tagged as `v0.3.0-win`; full history in [CHANGELOG.md](CHANGELOG.md).
+
+### v0.2.1-win (2026-10-06)
+
+- Fixed launcher opening a bare URL that triggered `dsh web authentication required`. Removed the launcher-side port polling so `dsh web` owns browser launch with its authenticated URL.
+- README (EN/ZH) updated to point users at the `?token=…` URL printed by `dsh web`; troubleshooting gained an entry for this 401 case.
+
+### Earlier releases
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete history, including the upstream sync to `dsh-v0.2.1-alpha.1` (2026-10-04), headless token summary and launcher port picker (2026-10-03), and the initial import (2026-09-02).
+
 ## Upstream
 
 Upstream development and documentation: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness).
