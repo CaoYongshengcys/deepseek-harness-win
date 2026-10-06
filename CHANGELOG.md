@@ -8,6 +8,8 @@
 - 该轮询还与 `dsh web` 自身的浏览器交接冲突：后者在插件树 settle 之后才用带令牌的地址打开默认浏览器，时机更准；轮询只等 TCP accept，总是先落地那个 401 页面。现已删除启动器侧的轮询，浏览器打开完全交由 `dsh web` 负责。
 - 现象此前呈"时好时坏"，原因是 cookie 按 `127.0.0.1:<端口>` 绑定且持久 30 天：某端口只要成功打开过一次带令牌的地址，之后裸地址也能凭 cookie 通过；换新端口、清除 cookie，或进程重启前从未打开过令牌地址时才会触发。令牌本身是每进程一份，重启后旧地址即失效。
 - README（中英文）同步：运行章节改为说明使用 `dsh web` 打印的带令牌地址，常见问题新增该 401 的处理条目。
+- 恢复工作区文件树的行级右键菜单（fork 补丁）。上游把文件树从 `ui-files` 迁到 `ui-sidebar-files` 时删掉了这份菜单，只剩标题行那个"在应用中打开工作区"按钮，单个目录和文件都无法交给本机文件管理器。现在按行恢复：目录行为"在文件管理器中打开"，文件行为"打开所在文件夹"，两者都经 `remote.session.openWorkspacePath`（目录不带 `action`，文件带 `action: 'reveal'`，Windows 上落到 `explorer /select,<路径>`）。菜单复用 `ui-primitives` 的 `Menu`，以 portal + `getAnchorRect` 钉在指针处；Host 拒绝或载体不通只给一条提示，树保持原样；`other` 类型的行不提供菜单，因为没有程序能打开它。
+- `ui-sidebar-files` 包文档（中英文）与 i18n 配对记录同步；该包新增 `@deepseek-ai/dsh-api-session-controller` 的注入项与依赖声明。验证口径：该包 89 个用例全过、client 程序 typecheck、oxlint、client i18n / 包结构 / 依赖 / 导出 JSDoc / unknown 断言五道门禁，以及该包 `src` 的逐文件 100% 覆盖率。
 
 ## 2026-10-04
 

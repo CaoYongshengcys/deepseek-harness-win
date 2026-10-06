@@ -5,11 +5,13 @@
  * for goes through its injected face. The component itself only decides what to
  * draw for each absolute path and what a click means: a directory toggles, a
  * file opens through the owner's `tabActions` for a `file:` viewer to claim, and
- * anything else is shown but refuses to open. The header uses the shared
- * PathLabel for the root, followed by reload and workspace directory actions.
+ * anything else is shown but refuses to open. A right-click raises a menu at the
+ * pointer that hands the row to the Host desktop instead: a directory opens as
+ * itself, a file is shown inside the folder that contains it. The header uses the
+ * shared PathLabel for the root, followed by reload and workspace directory actions.
  */
-import { useEffect, useLayoutEffect, useRef } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
 import type {
@@ -17,7 +19,7 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-slots'
 import {
   FileTypeIcon, IconFolderCloseRegular, IconFolderOpenRegular, IconRefreshOutlineRegular, Tooltip, classifyFileType,
-  IconPauseOutlineRegular, IconPlayOutlineRegular, PathLabel,
+  IconPauseOutlineRegular, IconPlayOutlineRegular, IconWarningOutlineRegular, Menu, PathLabel, Toast,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { fileAddressFor } from '@deepseek-ai/dsh-util-workspace-path'
 import type { WorkspaceDirectoryEntry } from '@deepseek-ai/dsh-api-workspace-files/types'
@@ -69,12 +71,21 @@ export function failureLine(t: TranslateNS<'sidebarFiles'>, failure: RemoteFailu
   }
 }
 
-/** What every level shares: the tab's tree and the two gestures. */
+/** What every level shares: the tab's tree and its three gestures. */
 interface TreeContext {
   readonly state: FilesTabState
   readonly onToggle: (parent: string, path: string) => void
   readonly onOpen: (path: string) => void
+  readonly onMenu: (kind: 'directory' | 'file', path: string, event: ReactMouseEvent) => void
   readonly t: TranslateNS<'sidebarFiles'>
+}
+
+/** The row a right-click raised the menu for, and the pointer position the portaled list anchors on. */
+interface MenuTarget {
+  readonly kind: 'directory' | 'file'
+  readonly path: string
+  readonly x: number
+  readonly y: number
 }
 
 /** One entry's row, and its children when it is an expanded directory. */
@@ -84,7 +95,9 @@ function Entry({ parent, entry, tree }: { parent: string; entry: WorkspaceDirect
     const expanded = tree.state.expanded.includes(path)
     return (
       <li className={css.item} data-files-entry="directory" data-files-path={path}>
-        <button type="button" className={css.row} aria-expanded={expanded} onClick={() => { tree.onToggle(parent, path) }}>
+        <button type="button" className={css.row} aria-expanded={expanded}
+          onClick={() => { tree.onToggle(parent, path) }}
+          onContextMenu={(event) => { tree.onMenu('directory', path, event) }}>
           {expanded ? <IconFolderOpenRegular className={css.icon} /> : <IconFolderCloseRegular className={css.icon} />}
           <span className={css.name}>{entry.name}</span>
         </button>
@@ -95,7 +108,8 @@ function Entry({ parent, entry, tree }: { parent: string; entry: WorkspaceDirect
   if (entry.type === 'file') {
     return (
       <li className={css.item} data-files-entry="file" data-files-path={path}>
-        <button type="button" className={css.row} onClick={() => { tree.onOpen(path) }}>
+        <button type="button" className={css.row} onClick={() => { tree.onOpen(path) }}
+          onContextMenu={(event) => { tree.onMenu('file', path, event) }}>
           <FileTypeIcon kind={classifyFileType(entry.name)} size={16} className={css.fileIcon} />
           <span className={css.name}>{entry.name}</span>
         </button>
@@ -139,7 +153,7 @@ function Level({ path, tree }: { path: string; tree: TreeContext }): ReactNode {
 /** The file tree's body: the workspace root and whatever the reader has opened under it. */
 export function FilesBody({
   useTabInfo, sessionId, useSessions, useStore, actions,
-  start, refresh, setAutoRefresh, toggle, t, renderSlot,
+  start, refresh, setAutoRefresh, toggle, openEntry, t, renderSlot,
 }: FilesBodyProps): ReactNode {
   const { tab } = useTabInfo()
   useEffect(() => tab.actions.bindCommands({ refresh: () => { refresh(tab.id) } }), [tab.actions, tab.id, refresh])
@@ -148,6 +162,11 @@ export function FilesBody({
   const state = useStore(store => store.byTab[tab.id])
   const bodyRef = useRef<HTMLDivElement>(null)
   const scrollTopRef = useRef(0)
+  // The right-clicked row plus the pointer position its portaled list anchors on.
+  const [menu, setMenu] = useState<MenuTarget | null>(null)
+  // Counts refusals so a repeated failure replays the banner instead of leaving
+  // the first one silently in place.
+  const [failure, setFailure] = useState(0)
   // Come back where the reader was: loaded levels outlive the body in the
   // store, so a remounted tree lays out at its full height before this runs
   // and the stored offset re-lands exactly. A fresh tree stores 0.
@@ -185,6 +204,11 @@ export function FilesBody({
     onToggle: (parent, path) => { toggle(tab.id, parent, path, state.expanded, signal) },
     // Every row is under the tree's root, so its address is session-relative.
     onOpen: (path) => { tabActions.openResource(fileAddressFor(sessionId, state.root, path)) },
+    // The row owns the right-click, so the native browser menu stays down.
+    onMenu: (kind, path, event) => {
+      event.preventDefault()
+      setMenu({ kind, path, x: event.clientX, y: event.clientY })
+    },
     t,
   }
   const reload = (): void => {
@@ -226,6 +250,31 @@ export function FilesBody({
       >
         <ul className={css.level}><Level path={state.root} tree={tree} /></ul>
       </div>
+      {menu !== null && (
+        <Menu
+          open
+          portal
+          dense
+          anchor={null}
+          getAnchorRect={() => new DOMRect(menu.x, menu.y, 0, 0)}
+          items={menu.kind === 'directory'
+            ? [{ id: 'open', label: t('menu.openFolder') }]
+            : [{ id: 'reveal', label: t('menu.openContainingFolder') }]}
+          onSelect={(id) => {
+            const target = menu
+            setMenu(null)
+            // A refusal leaves the tree exactly as it was, so the banner is the
+            // only surface that can say anything useful about the gesture.
+            void openEntry(target.path, id === 'reveal' ? 'reveal' : 'open')
+              .then((ok) => { if (!ok) setFailure(count => count + 1) })
+          }}
+          onClose={() => { setMenu(null) }}
+        />
+      )}
+      {failure > 0 && (
+        <Toast key={failure} text={t('menu.error')} icon={<IconWarningOutlineRegular />}
+          onDone={() => { setFailure(0) }} />
+      )}
     </div>
   )
 }

@@ -22,6 +22,7 @@ import type { ClientRemote, RemoteResult } from '@deepseek-ai/dsh-api-remotes/cl
 import type { BoundActions } from '@deepseek-ai/dsh-client-store'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionOpenWorkspacePathRequest } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { DirLevel, createFilesStore } from './store.ts'
 import type { WorkspaceFileWatchFrame } from '@deepseek-ai/dsh-api-workspace-files/types'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
@@ -100,6 +101,52 @@ export function createList(remote: WorkspaceFilesListRemote): ListWorkspaceDirec
 }
 
 /**
+ * The slice of the Client Remote face this package's native gesture calls: the
+ * `session` namespace's `openWorkspacePath`, exactly as the Host's generated
+ * client declares it.
+ */
+export type WorkspacePathOpenRemote = {
+  readonly session: Pick<ClientRemote['session'], 'openWorkspacePath'>
+}
+
+/**
+ * What one tree row asks of the Host desktop: opening a directory in the file
+ * manager, or showing a file inside the folder that contains it.
+ */
+export type OpenWorkspaceEntryAction = 'open' | 'reveal'
+
+/**
+ * Hand one absolute tree path to the Host desktop.
+ * @param path - absolute path of the row's entry.
+ * @param action - open the entry itself, or reveal it in its containing folder.
+ * @returns false when the Host refused the gesture or could not be reached.
+ */
+export type OpenWorkspaceEntry = (path: string, action: OpenWorkspaceEntryAction) => Promise<boolean>
+
+/**
+ * Bind the native gesture to one Remote face.
+ *
+ * A directory opens as itself, because revealing one would select it inside its
+ * parent instead of showing its contents. A file reveals, which is the only
+ * gesture that lands the reader on the file rather than merely on its folder.
+ * @param remote - the Client Remote face carrying the `session` namespace.
+ * @returns the gesture the tree's face performs.
+ */
+export function createOpenEntry(remote: WorkspacePathOpenRemote): OpenWorkspaceEntry {
+  return async (path, action) => {
+    const request: SessionOpenWorkspacePathRequest = action === 'reveal' ? { path, action } : { path }
+    try {
+      return (await remote.session.openWorkspacePath(request)).ok
+    } catch {
+      // Swallows carrier rejections: a Host that cannot be reached failed the
+      // gesture exactly as a Host that refused it did, and the row announces one
+      // line either way rather than distinguishing an unreachable carrier.
+      return false
+    }
+  }
+}
+
+/**
  * The absolute path of one child entry.
  *
  * Joined with `/` whatever the parent's separators: the Host resolves mixed
@@ -141,17 +188,21 @@ export interface FilesInjected {
    * @param signal - the tab record's lifetime.
    */
   readonly toggle: (tabId: TabId, parentPath: string, path: string, expanded: readonly string[], signal: AbortSignal) => void
+  /** Hand one row's entry to the Host desktop, as its context menu asks. */
+  readonly openEntry: OpenWorkspaceEntry
 }
 
 /**
  * Bind the tree's face to one directory listing.
  * @param list - the bound `workspaceFiles.list` call.
  * @param watch - target-scoped directory observation.
+ * @param openEntry - the bound native open/reveal gesture.
  * @returns the Slot `inject` factory: session and bound actions in, face out.
  */
 export function filesFace(
   list: ListWorkspaceDirectory,
   watch: WatchWorkspaceDirectory,
+  openEntry: OpenWorkspaceEntry,
 ): (sessionId: SessionId, actions: BoundActions<ReturnType<typeof createFilesStore>>) => FilesInjected {
   return (
     sessionId: SessionId,
@@ -216,6 +267,7 @@ export function filesFace(
         else parent?.expand(path, next)
         actions.toggled(tabId, path)
       },
+      openEntry,
     }
   }
 }

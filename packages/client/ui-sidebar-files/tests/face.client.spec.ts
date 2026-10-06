@@ -1,10 +1,10 @@
-/** Directory subscriptions and read settlements through the face's real store actions. */
+/** Directory subscriptions and read settlements through the face's real store actions, and the two Remote bindings. */
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { WorkspaceDirectoryListing } from '@deepseek-ai/dsh-api-workspace-files/types'
-import { childPath, createList, filesFace } from '../src/client/face.ts'
-import type { WorkspaceFilesListRemote } from '../src/client/face.ts'
+import { childPath, createList, createOpenEntry, filesFace } from '../src/client/face.ts'
+import type { WorkspaceFilesListRemote, WorkspacePathOpenRemote } from '../src/client/face.ts'
 import { createFilesStore } from '../src/client/store.ts'
 import type { DirLevel } from '../src/client/store.ts'
 import { DirectoryNode } from '../src/client/directory-node.ts'
@@ -20,7 +20,7 @@ const LEVEL: DirLevel = { entries: [{ name: 'src', type: 'directory' }], truncat
 function mount() {
   const instance = createFilesStore().create()
   const script = scriptedList()
-  const face = filesFace(script.list, script.watch)(SESSION, instance.actions)
+  const face = filesFace(script.list, script.watch, async () => true)(SESSION, instance.actions)
   const controller = new AbortController()
   onTestFinished(async () => {
     controller.abort()
@@ -302,6 +302,33 @@ describe('createList', () => {
       .mockResolvedValue({ ok: false, error })
     const result = await createList({ workspaceFiles: { list } })(SESSION, `${ROOT}/x`, new AbortController().signal)
     expect(result).toEqual({ ok: false, error })
+  })
+})
+
+describe('createOpenEntry', () => {
+  /** One recording `session.openWorkspacePath` face. */
+  function remote() {
+    const openWorkspacePath = vi.fn<WorkspacePathOpenRemote['session']['openWorkspacePath']>()
+    return { openWorkspacePath, face: { session: { openWorkspacePath } } }
+  }
+
+  it('asks for the directory itself, and for a file for the folder holding it', async () => {
+    const { face, openWorkspacePath } = remote()
+    openWorkspacePath.mockResolvedValue({ ok: true, value: { opened: true } })
+    const openEntry = createOpenEntry(face)
+    await expect(openEntry(`${ROOT}/src`, 'open')).resolves.toBe(true)
+    expect(openWorkspacePath).toHaveBeenNthCalledWith(1, { path: `${ROOT}/src` })
+    await expect(openEntry(`${ROOT}/README.md`, 'reveal')).resolves.toBe(true)
+    expect(openWorkspacePath).toHaveBeenNthCalledWith(2, { path: `${ROOT}/README.md`, action: 'reveal' })
+  })
+
+  it('reads a refusal and an unreachable carrier as one failure', async () => {
+    const { face, openWorkspacePath } = remote()
+    const openEntry = createOpenEntry(face)
+    openWorkspacePath.mockResolvedValue({ ok: false, error: new RemoteError('gateway/internal', 'refused', {}) })
+    await expect(openEntry(`${ROOT}/src`, 'open')).resolves.toBe(false)
+    openWorkspacePath.mockRejectedValue(new Error('socket closed'))
+    await expect(openEntry(`${ROOT}/src`, 'reveal')).resolves.toBe(false)
   })
 })
 

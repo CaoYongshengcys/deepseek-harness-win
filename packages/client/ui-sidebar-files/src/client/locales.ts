@@ -5,6 +5,9 @@
  * directory that is gone, one outside the workspace, and a path that is not a
  * directory each suggest a different next step.
  *
+ * The two context-menu lines name two different gestures: a directory opens as
+ * itself, while a file is shown inside the folder that contains it.
+ *
  * The namespace merge lives with its key set so that any module naming
  * `TranslateNS<'sidebarFiles'>` or `PropsLocale<'sidebarFiles'>` needs only this
  * file, whichever entry a program loads first.
@@ -13,7 +16,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** File-tree type name, guide entry, row states, and failure lines. */
+    /** File-tree type name, guide entry, row states, context-menu gestures, and failure lines. */
     sidebarFiles: SidebarFilesKey
   }
 }
@@ -33,6 +36,9 @@ export const zh = {
   'autoRefresh.enable': '开启自动刷新',
   'autoRefresh.disable': '关闭自动刷新',
   'entry.other': '这不是文件或目录，没法打开。',
+  'menu.openFolder': '在文件管理器中打开',
+  'menu.openContainingFolder': '打开所在文件夹',
+  'menu.error': '无法在文件管理器中打开，请重试',
   'error.notFound': '这个目录不在了。可能已被移动或删除。',
   'error.outsideWorkspace': '这个目录在工作区之外，侧栏不会读取它。',
   'error.notDirectory': '这不是一个目录。',
@@ -57,6 +63,9 @@ export const en = {
   'autoRefresh.enable': 'Enable auto refresh',
   'autoRefresh.disable': 'Disable auto refresh',
   'entry.other': 'Not a file or a directory, so it cannot be opened.',
+  'menu.openFolder': 'Open in File Manager',
+  'menu.openContainingFolder': 'Open Containing Folder',
+  'menu.error': 'Could not open it in the file manager. Try again.',
   'error.notFound': 'That directory is gone. It may have been moved or deleted.',
   'error.outsideWorkspace': 'That directory is outside the workspace, so the sidebar will not read it.',
   'error.notDirectory': 'That is not a directory.',

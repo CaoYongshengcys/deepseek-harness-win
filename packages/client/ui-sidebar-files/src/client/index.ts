@@ -13,11 +13,12 @@
 import type { ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/remote'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import { FILES_ID, filesDefinition } from './definition.tsx'
-import { createList, createWatch, filesFace } from './face.ts'
+import { createList, createOpenEntry, createWatch, filesFace } from './face.ts'
 import { FilesBody } from './FilesBody.tsx'
 import { FilesTitle } from './FilesTitle.tsx'
 import { en, zh } from './locales.ts'
@@ -25,7 +26,10 @@ import { createFilesStore } from './store.ts'
 
 export type { SidebarFilesKey } from './locales.ts'
 export type { DirLevel, FilesState, FilesTabState, LevelState } from './store.ts'
-export type { FilesInjected, ListWorkspaceDirectory, WorkspaceFilesListRemote } from './face.ts'
+export type {
+  FilesInjected, ListWorkspaceDirectory, OpenWorkspaceEntry, OpenWorkspaceEntryAction,
+  WorkspaceFilesListRemote, WorkspacePathOpenRemote,
+} from './face.ts'
 export type { FilesBodyProps } from './FilesBody.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -47,9 +51,9 @@ const NS = 'sidebarFiles'
 
 /**
  * Required browser services: the tab registry, the keyed seat, the Remote
- * carrier and its namespace, and copy.
+ * carrier with the listing and native-open namespaces, and copy.
  */
-export const inject = ['slots', 'locale', 'sidebarRightTabs', 'sidebarRight', 'remote', 'remote.workspaceFiles']
+export const inject = ['slots', 'locale', 'sidebarRightTabs', 'sidebarRight', 'remote', 'remote.workspaceFiles', 'remote.session']
 
 /**
  * Client plugin body: register the type, its dictionaries, its body, and its chip title.
@@ -82,7 +86,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-sidebar-files: dictionaries')
 
   const store = createFilesStore()
-  const inject = filesFace(createList(ctx.remote), createWatch(ctx.remote))
+  const inject = filesFace(createList(ctx.remote), createWatch(ctx.remote), createOpenEntry(ctx.remote))
   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register(
     {
       name: 'sidebar.right.pane.tab', key: FILES_ID, locale: NS, store, inject,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** File-tree presentation over controlled directory watches and deferred listings. */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { act, cleanup, fireEvent } from '@testing-library/react'
 import { makeTranslate, RemoteError } from '@deepseek-ai/dsh-client-test-runtime'
 import type { RemoteFailure } from '@deepseek-ai/dsh-api-remotes/client'
@@ -288,6 +288,70 @@ describe('FilesBody', () => {
     expect(instance.getSnapshot().byTab[TAB]).toBeUndefined()
     expect(view.container.querySelector('[data-files-state="tree"]')).toBeNull()
     expect(script.list).toHaveBeenCalledTimes(1)
+  })
+
+  /** A mounted body whose root level has settled, so every row kind is on screen. */
+  async function listedTree() {
+    const mounted = mountBody()
+    await act(() => mounted.script.watches.ready(ROOT))
+    await act(() => mounted.script.settle({ ok: true, value: ROOT_LEVEL }))
+    return mounted
+  }
+
+  /** One row's gesture target, given the path the tree keyed it by. */
+  function rowOf(root: HTMLElement, path: string): Element {
+    const row = root.querySelector(`[data-files-path="${path}"] [class]`)
+    if (row === null) throw new Error(`no row for ${path}`)
+    return row
+  }
+
+  it('opens a directory as itself from its right-click menu, keeping the native menu down', async () => {
+    const { view, openEntry } = await listedTree()
+    expect(fireEvent.contextMenu(rowOf(view.container, `${ROOT}/src`), { clientX: 40, clientY: 60 })).toBe(false)
+    fireEvent.click(view.getByRole('menuitem', { name: zh['menu.openFolder'] }))
+    await act(async () => {})
+    expect(openEntry).toHaveBeenCalledWith(`${ROOT}/src`, 'open')
+  })
+
+  it('reveals a file inside the folder that contains it', async () => {
+    const { view, openEntry } = await listedTree()
+    fireEvent.contextMenu(rowOf(view.container, `${ROOT}/README.md`))
+    fireEvent.click(view.getByRole('menuitem', { name: zh['menu.openContainingFolder'] }))
+    await act(async () => {})
+    expect(openEntry).toHaveBeenCalledWith(`${ROOT}/README.md`, 'reveal')
+  })
+
+  it('drops the menu on Escape without asking the Host for anything', async () => {
+    const { view, openEntry } = await listedTree()
+    fireEvent.contextMenu(rowOf(view.container, `${ROOT}/src`))
+    expect(view.getByRole('menuitem', { name: zh['menu.openFolder'] })).toBeTruthy()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(view.queryByRole('menuitem')).toBeNull()
+    expect(openEntry).not.toHaveBeenCalled()
+  })
+
+  it('announces a gesture the Host refused, and takes the banner down once it has been read', async () => {
+    const { view, openEntry, setAccepted } = await listedTree()
+    setAccepted(false)
+    // Fake timers go on before the gesture: the banner schedules its own
+    // lifetime when it mounts, and a timer scheduled for real is never
+    // advanced by the fake clock.
+    vi.useFakeTimers()
+    onTestFinished(() => { vi.useRealTimers() })
+    fireEvent.contextMenu(rowOf(view.container, `${ROOT}/src`))
+    fireEvent.click(view.getByRole('menuitem', { name: zh['menu.openFolder'] }))
+    await act(async () => {})
+    expect(openEntry).toHaveBeenCalledOnce()
+    expect(view.getByText(zh['menu.error'])).toBeTruthy()
+    expect(names(view.container)).toEqual([`${ROOT}/src`, `${ROOT}/.env`, `${ROOT}/pipe`, `${ROOT}/README.md`])
+    await act(async () => { await vi.advanceTimersByTimeAsync(4000) })
+    expect(view.queryByText(zh['menu.error'])).toBeNull()
+  })
+
+  it('offers no menu on a row that is neither file nor directory, since nothing can open it', async () => {
+    const { view } = await listedTree()
+    fireEvent.contextMenu(rowOf(view.container, `${ROOT}/pipe`))
+    expect(view.queryByRole('menuitem')).toBeNull()
   })
 })
 
